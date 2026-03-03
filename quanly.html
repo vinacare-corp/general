@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý - Thiên Phúc Trading & Service</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        header {
+            width: 100%;
+            padding: 15px 0;
+            background-color: #004a99; /* Màu xanh doanh nghiệp */
+            color: #fff;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        header h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+        header h2 { margin: 5px 0 0; font-size: 16px; font-weight: 300; }
+
+        /* Login Container */
+        #login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        #login-container input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        #login-container button {
+            width: 100%;
+            padding: 12px;
+            background: #004a99;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Main Interface */
+        #main-container { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+
+        nav#main-menu {
+            display: flex;
+            background: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        nav#main-menu button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            border-bottom: 3px solid transparent;
+        }
+
+        nav#main-menu button.active {
+            color: #004a99;
+            border-bottom: 3px solid #004a99;
+        }
+
+        .section-content { display: flex; gap: 20px; }
+
+        .sidebar {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .main-panel {
+            flex: 2.5;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; color: #004a99; }
+        tr:hover { background: #f1f7ff; }
+
+        .btn-action {
+            padding: 8px 15px;
+            background: #004a99;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .status-paid { color: green; font-weight: bold; }
+        .status-pending { color: orange; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>CÔNG TY CỔ PHẦN THƯƠNG MẠI - DỊCH VỤ THIÊN PHÚC</h1>
+        <h2>Hệ thống Quản trị Doanh nghiệp Hợp nhất</h2>
+    </header>
+
+    <div id="login-container">
+        <h2 style="color: #004a99;">ĐĂNG NHẬP HỆ THỐNG</h2>
+        <input type="text" id="username" placeholder="Tên đăng nhập">
+        <input type="password" id="password" placeholder="Mật khẩu">
+        <button onclick="login()">Truy cập hệ thống</button>
+        <p style="font-size: 12px; color: #999; margin-top: 20px;">© 2025 Thiên Phúc Corporation</p>
+    </div>
+
+    <div id="main-container">
+        <nav id="main-menu">
+            <button class="active" onclick="showTab('order')">QUẢN LÝ ĐƠN HÀNG</button>
+            <button onclick="showTab('customer')">KHÁCH HÀNG</button>
+            <button onclick="showTab('product')">SẢN PHẨM & KHO</button>
+            <button onclick="showTab('report')">BÁO CÁO DOANH THU</button>
+        </nav>
+
+        <div class="section-content" id="order-section">
+            <div class="sidebar">
+                <h3>Tạo đơn hàng mới</h3>
+                <div class="form-group">
+                    <label>Ngày giao dịch:</label>
+                    <input type="date" id="order_date">
+                </div>
+                <div class="form-group">
+                    <label>Tên khách hàng:</label>
+                    <input type="text" id="cust_name" placeholder="Họ tên hoặc Công ty">
+                </div>
+                <div class="form-group">
+                    <label>Sản phẩm/Dịch vụ:</label>
+                    <input type="text" id="prod_name" placeholder="Tên mặt hàng/gói dịch vụ">
+                </div>
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>Số lượng:</label>
+                        <input type="number" id="prod_qty" value="1" oninput="calcTotal()">
+                    </div>
+                    <div style="flex: 2;">
+                        <label>Đơn giá (VNĐ):</label>
+                        <input type="number" id="prod_price" placeholder="0" oninput="calcTotal()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Thành tiền:</label>
+                    <input type="text" id="prod_total" readonly style="background: #e9ecef; font-weight: bold; color: #d32f2f;">
+                </div>
+                <div class="form-group">
+                    <label>Trạng thái:</label>
+                    <select id="order_status">
+                        <option value="Đã thanh toán">Đã thanh toán</option>
+                        <option value="Chờ xử lý">Chờ xử lý</option>
+                        <option value="Đang giao hàng">Đang giao hàng</option>
+                    </select>
+                </div>
+                <button class="btn-action" style="width: 100%;" onclick="saveOrder()">LƯU ĐƠN HÀNG</button>
+            </div>
+
+            <div class="main-panel">
+                <h3>DANH SÁCH ĐƠN HÀNG GẦN ĐÂY</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Khách hàng</th>
+                            <th>Sản phẩm</th>
+                            <th>Thành tiền</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="order-list">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cấu hình Firebase (Bạn hãy thay bằng Config của bạn vào đây)
+        const firebaseConfig = {
+            apiKey: "AIza...",
+            authDomain: "thien-phuc-management.firebaseapp.com",
+            databaseURL: "https://thien-phuc-management-default-rtdb.firebaseio.com",
+            projectId: "thien-phuc-management",
+            storageBucket: "thien-phuc-management.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Hàm Đăng nhập đơn giản
+        function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            
+            if(user === "admin" && pass === "123456") {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('main-container').style.display = 'block';
+                loadOrders();
+            } else {
+                alert("Thông tin đăng nhập không chính xác!");
+            }
+        }
+
+        // Tính thành tiền tự động
+        function calcTotal() {
+            const qty = document.getElementById('prod_qty').value || 0;
+            const price = document.getElementById('prod_price').value || 0;
+            const total = qty * price;
+            document.getElementById('prod_total').value = total.toLocaleString('vi-VN') + " VNĐ";
+        }
+
+        // Lưu đơn hàng lên Firebase
+        function saveOrder() {
+            const data = {
+                date: document.getElementById('order_date').value,
+                customer: document.getElementById('cust_name').value,
+                product: document.getElementById('prod_name').value,
+                qty: document.getElementById('prod_qty').value,
+                price: document.getElementById('prod_price').value,
+                status: document.getElementById('order_status').value,
+                timestamp: Date.now()
+            };
+
+            if(!data.customer || !data.product) {
+                alert("Vui lòng nhập đầy đủ thông tin khách hàng và sản phẩm!");
+                return;
+            }
+
+            db.ref('orders').push(data).then(() => {
+                alert("Đã lưu đơn hàng thành công!");
+                clearForm();
+                loadOrders();
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('cust_name').value = "";
+            document.getElementById('prod_name').value = "";
+            document.getElementById('prod_price').value = "";
+            document.getElementById('prod_total').value = "";
+        }
+
+        // Tải danh sách đơn hàng
+        function loadOrders() {
+            db.ref('orders').limitToLast(20).on('value', (snapshot) => {
+                const list = document.getElementById('order-list');
+                list.innerHTML = "";
+                snapshot.forEach((child) => {
+                    const item = child.val();
+                    const row = `<tr>
+                        <td>${item.date}</td>
+                        <td>${item.customer}</td>
+                        <td>${item.product} (x${item.qty})</td>
+                        <td><b>${(item.qty * item.price).toLocaleString('vi-VN')}</b></td>
+                        <td class="${item.status === 'Đã thanh toán' ? 'status-paid' : 'status-pending'}">${item.status}</td>
+                        <td><button onclick="deleteOrder('${child.key}')" style="color:red; cursor:pointer; border:none; background:none;">Xóa</button></td>
+                    </tr>`;
+                    list.innerHTML = row + list.innerHTML;
+                });
+            });
+        }
+
+        function deleteOrder(key) {
+            if(confirm("Bạn có chắc muốn xóa đơn hàng này?")) {
+                db.ref('orders/' + key).remove();
+            }
+        }
+
+        function showTab(tab) {
+            // Logic để chuyển đổi các section (tương tự như trang cũ)
+            alert("Tính năng " + tab + " đang được cập nhật nội dung...");
+        }
+    </script>
+</body>
+</html>
